@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "riskpulse"
+version = "0.1.0"
+description = "Production-minded real-time fraud scoring API built with FastAPI and scikit-learn."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [{ name = "Yasser Jabari" }]
+dependencies = [
+    "fastapi>=0.116,<1.0",
+    "joblib>=1.5,<2.0",
+    "numpy>=2.0,<3.0",
+    "pydantic-settings>=2.10,<3.0",
+    "scikit-learn>=1.7,<2.0",
+    "uvicorn[standard]>=0.35,<1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx>=0.28,<1.0",
+    "pytest>=8.4,<9.0",
+    "pytest-cov>=6.2,<7.0",
+    "ruff>=0.12,<1.0",
+]
+
+[project.scripts]
+riskpulse-train = "riskpulse.ml.train:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+addopts = "--cov=riskpulse --cov-branch --cov-report=term-missing --cov-fail-under=90"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+omit = ["src/riskpulse/ml/train.py"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.ruff.format]
+quote-style = "double"

@@ -1,0 +1,9 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      RISKPULSE_MODEL_PATH: /app/artifacts/fraud_model.joblib
+      RISKPULSE_LOG_LEVEL: INFO
+    restart: unless-stopped
