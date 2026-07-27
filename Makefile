@@ -1,7 +1,10 @@
-.PHONY: install train run test lint format check docker
+.PHONY: install data train run test lint format check docker
 
 install:
 	python -m pip install -e ".[dev]"
+
+data:
+	PYTHONPATH=src python -m riskpulse.ml.inspect_data --data-home data/openml
 
 train:
 	python -m riskpulse.ml.train --output artifacts/fraud_model.joblib

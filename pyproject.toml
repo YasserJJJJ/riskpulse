@@ -14,6 +14,8 @@ dependencies = [
     "fastapi>=0.116,<1.0",
     "joblib>=1.5,<2.0",
     "numpy>=2.0,<3.0",
+    "pandas>=2.3,<4.0",
+    "pyarrow>=18.0,<24.0",
     "pydantic-settings>=2.10,<3.0",
     "scikit-learn>=1.7,<2.0",
     "uvicorn[standard]>=0.35,<1.0",
@@ -39,7 +41,10 @@ addopts = "--cov=riskpulse --cov-branch --cov-report=term-missing --cov-fail-und
 testpaths = ["tests"]
 
 [tool.coverage.run]
-omit = ["src/riskpulse/ml/train.py"]
+omit = [
+    "src/riskpulse/ml/inspect_data.py",
+    "src/riskpulse/ml/train.py",
+]
 
 [tool.ruff]
 line-length = 100
