@@ -97,6 +97,7 @@ Actual values vary with the trained artifact.
 make install
 make data
 make benchmark
+make calibrate
 make train
 make run
 make lint
@@ -109,6 +110,11 @@ and histogram gradient boosting. Models and thresholds are selected using only
 the validation period. The selected pair is then evaluated once on the
 untouched test period. The report is written to
 `artifacts/real_data_benchmark.json`.
+
+`make calibrate` keeps four chronological periods separate: model fitting,
+probability calibration, threshold selection, and final testing. It writes a
+versioned Joblib model, a machine-readable evaluation report, and a
+recruiter-readable model card under `artifacts/`.
 
 For Docker:
 
@@ -154,7 +160,7 @@ a non-root user.
 - [x] Build time-aware preprocessing and a temporal validation split
 - [x] Compare interpretable and nonlinear baselines
 - [x] Add cost-sensitive threshold selection
-- [ ] Add probability calibration
+- [x] Add probability calibration and a model card
 - Produce a model card and reproducible evaluation report
 
 ### Phase 3 — Production data layer

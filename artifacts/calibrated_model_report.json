@@ -1,0 +1,83 @@
+{
+  "model_version": "creditcard-hgb-sigmoid-20260727-cbbc97d3",
+  "trained_at": "2026-07-27T14:29:10.311518+00:00",
+  "model_type": "calibrated_hist_gradient_boosting",
+  "calibration_method": "sigmoid",
+  "dataset": {
+    "openml_data_id": 1597,
+    "transactions": 284807,
+    "frauds": 492,
+    "fraud_rate": 0.001727485630620034,
+    "feature_count": 30,
+    "time_start_seconds": 0.0,
+    "time_end_seconds": 172792.0
+  },
+  "chronological_partitions": {
+    "fit": 159491,
+    "calibration": 39873,
+    "validation": 42721,
+    "test": 42722
+  },
+  "cost_policy": {
+    "false_positive_review_cost": 5.0,
+    "missed_fraud_amount_multiplier": 1.0
+  },
+  "selected_threshold": 0.07350753189322903,
+  "validation": {
+    "threshold": 0.07350753189322903,
+    "roc_auc": 0.9825387989486196,
+    "pr_auc": 0.870025573192403,
+    "precision": 0.8679245283018868,
+    "recall": 0.8214285714285714,
+    "f1": 0.8440366972477065,
+    "alert_rate": 0.0012406076636782848,
+    "true_positives": 46,
+    "false_positives": 7,
+    "true_negatives": 42658,
+    "false_negatives": 10,
+    "fraud_amount_total": 8397.699999999999,
+    "fraud_amount_captured": 7997.12,
+    "fraud_amount_capture_rate": 0.9522988437310217,
+    "estimated_cost": 435.58000000000004,
+    "no_alert_cost": 8397.699999999999,
+    "cost_reduction_vs_no_alert": 7962.119999999999
+  },
+  "test": {
+    "threshold": 0.07350753189322903,
+    "roc_auc": 0.9634241315281858,
+    "pr_auc": 0.7434910926259263,
+    "precision": 0.8260869565217391,
+    "recall": 0.7307692307692307,
+    "f1": 0.7755102040816326,
+    "alert_rate": 0.0010767286175740836,
+    "true_positives": 38,
+    "false_positives": 8,
+    "true_negatives": 42662,
+    "false_negatives": 14,
+    "fraud_amount_total": 6168.880000000001,
+    "fraud_amount_captured": 3756.58,
+    "fraud_amount_capture_rate": 0.6089565691016845,
+    "estimated_cost": 2452.3,
+    "no_alert_cost": 6168.880000000001,
+    "cost_reduction_vs_no_alert": 3716.580000000001
+  },
+  "reliability": {
+    "validation_uncalibrated": {
+      "brier_score": 0.0004990025767534755,
+      "log_loss": 0.002457262775918176,
+      "expected_calibration_error": 0.0006419116024351885
+    },
+    "validation_calibrated": {
+      "brier_score": 0.0003663582982748586,
+      "log_loss": 0.002099406643454572,
+      "expected_calibration_error": 0.0003097758682185186
+    },
+    "test_calibrated": {
+      "brier_score": 0.0004409367298466813,
+      "log_loss": 0.0029273182230524337,
+      "expected_calibration_error": 0.00030624293201802214
+    },
+    "validation_brier_improvement": 0.00013264427847861692,
+    "validation_log_loss_improvement": 0.00035785613246360403
+  }
+}

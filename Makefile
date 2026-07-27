@@ -1,4 +1,4 @@
-.PHONY: install data benchmark train run test lint format check docker
+.PHONY: install data benchmark calibrate train run test lint format check docker
 
 install:
 	python -m pip install -e ".[dev]"
@@ -10,6 +10,13 @@ benchmark:
 	PYTHONPATH=src python -m riskpulse.ml.benchmark \
 		--data-home data/openml \
 		--output artifacts/real_data_benchmark.json
+
+calibrate:
+	PYTHONPATH=src python -m riskpulse.ml.calibrate \
+		--data-home data/openml \
+		--model-output artifacts/calibrated_creditcard_model.joblib \
+		--report-output artifacts/calibrated_model_report.json \
+		--model-card-output artifacts/MODEL_CARD.md
 
 train:
 	python -m riskpulse.ml.train --output artifacts/fraud_model.joblib
