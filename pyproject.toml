@@ -43,6 +43,7 @@ testpaths = ["tests"]
 [tool.coverage.run]
 omit = [
     "src/riskpulse/ml/benchmark.py",
+    "src/riskpulse/ml/calibrate.py",
     "src/riskpulse/ml/inspect_data.py",
     "src/riskpulse/ml/train.py",
 ]

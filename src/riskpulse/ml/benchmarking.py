@@ -211,6 +211,18 @@ def evaluate_scores(
     )
 
 
+def build_hist_gradient_boosting_model() -> HistGradientBoostingClassifier:
+    return HistGradientBoostingClassifier(
+        class_weight="balanced",
+        early_stopping=False,
+        l2_regularization=1.0,
+        learning_rate=0.08,
+        max_iter=150,
+        max_leaf_nodes=31,
+        random_state=42,
+    )
+
+
 def build_candidate_models() -> dict[str, Any]:
     return {
         "dummy_prior": DummyClassifier(strategy="prior"),
@@ -227,15 +239,7 @@ def build_candidate_models() -> dict[str, Any]:
                 ),
             ]
         ),
-        "hist_gradient_boosting": HistGradientBoostingClassifier(
-            class_weight="balanced",
-            early_stopping=False,
-            l2_regularization=1.0,
-            learning_rate=0.08,
-            max_iter=150,
-            max_leaf_nodes=31,
-            random_state=42,
-        ),
+        "hist_gradient_boosting": build_hist_gradient_boosting_model(),
     }
 
 
