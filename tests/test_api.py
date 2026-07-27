@@ -1,4 +1,9 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
+
+from riskpulse.config import Settings
+from riskpulse.main import create_app
 
 
 def low_risk_transaction() -> dict[str, object]:
@@ -42,6 +47,34 @@ def test_health_endpoints(client: TestClient) -> None:
     assert live.json()["status"] == "ok"
     assert ready.status_code == 200
     assert ready.json()["status"] == "ready"
+
+
+def test_readiness_fails_when_database_is_unavailable(client: TestClient) -> None:
+    client.app.state.database.is_ready = lambda: False
+
+    response = client.get("/health/ready")
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "database is unavailable"
+
+
+def test_readiness_requires_migrated_schema(
+    model_path: Path,
+    calibrated_model_path: Path,
+    tmp_path: Path,
+) -> None:
+    settings = Settings(
+        model_path=model_path,
+        calibrated_model_path=calibrated_model_path,
+        database_url=f"sqlite:///{tmp_path / 'unmigrated.db'}",
+    )
+
+    with TestClient(create_app(settings)) as client:
+        live = client.get("/health/live")
+        ready = client.get("/health/ready")
+
+    assert live.status_code == 200
+    assert ready.status_code == 503
 
 
 def test_scores_transaction(client: TestClient) -> None:

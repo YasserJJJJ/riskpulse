@@ -8,6 +8,8 @@ __pycache__/
 venv/
 .env
 artifacts/*.joblib
+artifacts/*.db
+artifacts/*.db-journal
 data/
 htmlcov/
 dist/

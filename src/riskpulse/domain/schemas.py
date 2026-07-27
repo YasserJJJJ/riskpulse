@@ -111,6 +111,8 @@ class ReviewRoute(StrEnum):
 
 class CalibratedScoreResponse(BaseModel):
     transaction_id: UUID
+    idempotency_key: str
+    idempotency_replayed: bool
     fraud_probability: float = Field(ge=0, le=1)
     route: ReviewRoute
     decision_threshold: float = Field(ge=0, le=1)
@@ -129,6 +131,38 @@ class CalibratedModelMetadataResponse(BaseModel):
     dataset_id: int
     validation_metrics: dict[str, float]
     test_metrics: dict[str, float]
+
+
+class ReviewOutcome(StrEnum):
+    CONFIRMED_FRAUD = "confirmed_fraud"
+    LEGITIMATE = "legitimate"
+
+
+class ReviewFeedbackRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    outcome: ReviewOutcome
+    reviewer_id: str = Field(min_length=1, max_length=128)
+    notes: str | None = Field(default=None, max_length=2_000)
+
+
+class ReviewFeedbackResponse(BaseModel):
+    outcome: ReviewOutcome
+    reviewer_id: str
+    notes: str | None
+    reviewed_at: datetime
+
+
+class ScoringEventResponse(BaseModel):
+    transaction_id: UUID
+    idempotency_key: str
+    features: dict[str, float]
+    fraud_probability: float = Field(ge=0, le=1)
+    route: ReviewRoute
+    decision_threshold: float = Field(ge=0, le=1)
+    model_version: str
+    scored_at: datetime
+    feedback: ReviewFeedbackResponse | None
 
 
 class HealthResponse(BaseModel):

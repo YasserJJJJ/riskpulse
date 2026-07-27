@@ -23,6 +23,10 @@ development metrics, not claims about real-world fraud performance.
 - Calibrate fraud probabilities on a dedicated chronological period
 - Serve the versioned real-data artifact behind a typed scoring contract
 - Fail gracefully when the optional calibrated artifact is unavailable
+- Persist scoring events and review feedback through SQLAlchemy
+- Protect scoring writes with payload-aware idempotency keys
+- Manage the database schema with Alembic migrations
+- Run PostgreSQL alongside the API with Docker Compose
 
 ## Architecture
 
@@ -31,8 +35,12 @@ flowchart TD
     C["Client or dashboard"] --> A["FastAPI scoring API"]
     A --> V["Pydantic validation"]
     V --> M["Versioned risk model"]
-    M --> D["Decision and reason codes"]
+    M --> D["Decision and audit event"]
+    D --> P["PostgreSQL or SQLite"]
     D --> R["Typed JSON response"]
+    P --> Q["Manual-review queue"]
+    Q --> F["Analyst feedback"]
+    F --> P
 ```
 
 ## Quick start
@@ -46,6 +54,7 @@ python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"
 python -m riskpulse.ml.train --output artifacts/fraud_model.joblib
 make calibrate
+make migrate
 python -m uvicorn riskpulse.main:app --app-dir src --reload
 ```
 
@@ -100,7 +109,12 @@ The real-data endpoint is available at
 dataset's `time`, `amount`, and anonymized `v1` through `v28` PCA features.
 Swagger UI provides the complete editable request example. The response returns
 a calibrated fraud probability and routes an alert to `manual_review`; it does
-not automatically decline a transaction.
+not automatically decline a transaction. Clients should send an
+`Idempotency-Key` header. Repeating the same key and feature payload returns the
+original event, while changing the payload produces HTTP 409.
+
+Local commands default to SQLite at `artifacts/riskpulse.db`, keeping setup
+small. Docker Compose runs the same SQLAlchemy repository against PostgreSQL.
 
 ## Development commands
 
@@ -109,6 +123,7 @@ make install
 make data
 make benchmark
 make calibrate
+make migrate
 make train
 make run
 make lint
@@ -127,16 +142,16 @@ probability calibration, threshold selection, and final testing. It writes a
 versioned Joblib model, a machine-readable evaluation report, and a
 recruiter-readable model card under `artifacts/`.
 
-For Docker:
+For PostgreSQL and the API in Docker:
 
 ```bash
 docker compose up --build
 ```
 
-The image trains a reproducible demo model during the build and runs the API as
-a non-root user. Because the calibrated Joblib artifact is generated rather
-than committed, the real-data endpoints return HTTP 503 until that artifact is
-generated or mounted. The demo endpoint remains available.
+Compose starts PostgreSQL, waits for its health check, applies the Alembic
+migration, mounts the locally generated calibrated Joblib artifact read-only,
+and then starts the API as a non-root user. Run `make calibrate` before the
+first Compose startup so that artifact exists.
 
 ## API surface
 
@@ -148,6 +163,9 @@ generated or mounted. The demo endpoint remains available.
 | `POST` | `/v1/transactions/score` | Score one demo-schema transaction |
 | `GET` | `/v1/credit-card/model` | Inspect the calibrated artifact contract |
 | `POST` | `/v1/credit-card/transactions/score` | Score anonymized public-data features |
+| `GET` | `/v1/credit-card/transactions/{id}` | Retrieve an immutable scoring audit event |
+| `GET` | `/v1/credit-card/reviews` | List unresolved manual-review events |
+| `POST` | `/v1/credit-card/transactions/{id}/feedback` | Record an analyst outcome |
 
 ## Important modelling choices
 
@@ -165,6 +183,11 @@ generated or mounted. The demo endpoint remains available.
 - The service rejects artifacts whose feature order no longer matches the API.
 - Joblib artifacts can execute code while loading, so the service accepts only
   artifacts produced by a trusted training pipeline.
+- Feature payloads are anonymized PCA values from the public dataset. A
+  production deployment should apply its own retention and access policies.
+- The feedback endpoint intentionally has no authentication in this portfolio
+  build; authentication and role-based authorization are required before use
+  with real analysts.
 - Reason codes describe triggered business signals. They are not presented as
   causal explanations.
 
@@ -188,9 +211,12 @@ generated or mounted. The demo endpoint remains available.
 
 ### Phase 4 — Production data layer
 
-- Persist scoring events and review feedback in PostgreSQL
+- [x] Persist scoring events and review feedback in PostgreSQL
+- [x] Add Alembic schema migrations
+- [x] Add payload-aware idempotency keys
+- [x] Add an auditable manual-review queue
 - Add Redis-backed online features
-- Add idempotency keys and batch scoring
+- Add batch scoring
 - Introduce structured logging and request tracing
 
 ### Phase 5 — MLOps and monitoring
@@ -214,6 +240,7 @@ src/riskpulse/
 ├── api/          # FastAPI routes and dependencies
 ├── domain/       # Request, response, and decision models
 ├── ml/           # Features, training, artifacts, and inference
+├── persistence/  # SQLAlchemy models, sessions, and audit repository
 ├── config.py     # Environment-based configuration
 └── main.py       # Application factory
 ```

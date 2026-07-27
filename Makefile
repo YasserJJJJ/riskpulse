@@ -1,4 +1,4 @@
-.PHONY: install data benchmark calibrate train run test lint format check docker
+.PHONY: install data benchmark calibrate migrate train run test lint format check docker
 
 install:
 	python -m pip install -e ".[dev]"
@@ -17,6 +17,9 @@ calibrate:
 		--model-output artifacts/calibrated_creditcard_model.joblib \
 		--report-output artifacts/calibrated_model_report.json \
 		--model-card-output artifacts/MODEL_CARD.md
+
+migrate:
+	alembic upgrade head
 
 train:
 	python -m riskpulse.ml.train --output artifacts/fraud_model.joblib

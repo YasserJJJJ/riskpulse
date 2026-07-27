@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     model_path: Path = Path("artifacts/fraud_model.joblib")
     calibrated_model_path: Path = Path("artifacts/calibrated_creditcard_model.joblib")
+    database_url: str = "sqlite:///artifacts/riskpulse.db"
+    database_echo: bool = False
     review_threshold: float = 0.50
     decline_threshold: float = 0.85
     log_level: str = "INFO"
