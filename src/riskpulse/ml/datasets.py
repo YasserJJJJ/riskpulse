@@ -74,6 +74,9 @@ def _load_fallback_frame(data_home: Path) -> pd.DataFrame:
 
 
 def _load_source_frame(data_home: Path) -> pd.DataFrame:
+    if (data_home / PARQUET_CACHE_FILENAME).exists():
+        return _load_fallback_frame(data_home)
+
     try:
         downloaded: Any = fetch_openml(
             data_id=OPENML_CREDIT_CARD_DATA_ID,

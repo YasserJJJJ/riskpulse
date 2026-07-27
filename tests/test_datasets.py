@@ -53,7 +53,7 @@ def test_loads_validates_and_orders_openml_data(
     assert dataset.summary.feature_count == 30
 
 
-def test_uses_cached_parquet_when_openml_api_is_unavailable(
+def test_uses_cached_parquet_without_calling_openml_api(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -61,18 +61,17 @@ def test_uses_cached_parquet_when_openml_api_is_unavailable(
     cache_path = tmp_path / PARQUET_CACHE_FILENAME
     cache_path.write_bytes(b"cached parquet placeholder")
 
-    def unavailable_openml(**_: object) -> None:
-        raise HTTPError("https://www.openml.org", 504, "Gateway Time-out", {}, None)
+    def unexpected_openml_call(**_: object) -> None:
+        raise AssertionError("cached data should avoid an OpenML API request")
 
     def fake_read_parquet(path: Path) -> pd.DataFrame:
         assert path == cache_path
         return frame
 
-    monkeypatch.setattr("riskpulse.ml.datasets.fetch_openml", unavailable_openml)
+    monkeypatch.setattr("riskpulse.ml.datasets.fetch_openml", unexpected_openml_call)
     monkeypatch.setattr("riskpulse.ml.datasets.pd.read_parquet", fake_read_parquet)
 
-    with pytest.warns(RuntimeWarning, match="pinned Parquet"):
-        dataset = load_credit_card_fraud(tmp_path)
+    dataset = load_credit_card_fraud(tmp_path)
 
     assert dataset.summary.transactions == 20
     assert dataset.features["Time"].is_monotonic_increasing
