@@ -12,6 +12,7 @@ from riskpulse.config import Settings
 from riskpulse.main import create_app
 from riskpulse.ml.datasets import FEATURE_COLUMNS
 from riskpulse.ml.training import train_and_save_model
+from riskpulse.persistence.database import Database
 
 
 @pytest.fixture(scope="session")
@@ -51,10 +52,15 @@ def calibrated_model_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 @pytest.fixture
-def settings(model_path: Path, calibrated_model_path: Path) -> Settings:
+def settings(
+    model_path: Path,
+    calibrated_model_path: Path,
+    tmp_path: Path,
+) -> Settings:
     return Settings(
         model_path=model_path,
         calibrated_model_path=calibrated_model_path,
+        database_url=f"sqlite:///{tmp_path / 'riskpulse.db'}",
         review_threshold=0.35,
         decline_threshold=0.80,
     )
@@ -62,5 +68,8 @@ def settings(model_path: Path, calibrated_model_path: Path) -> Settings:
 
 @pytest.fixture
 def client(settings: Settings) -> Iterator[TestClient]:
+    database = Database(settings.database_url)
+    database.create_schema()
+    database.close()
     with TestClient(create_app(settings)) as test_client:
         yield test_client

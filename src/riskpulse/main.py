@@ -10,6 +10,7 @@ from riskpulse.api.scoring import router as scoring_router
 from riskpulse.config import Settings
 from riskpulse.ml.calibrated_service import CalibratedFraudModel
 from riskpulse.ml.service import RiskModel
+from riskpulse.persistence.database import Database
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -22,27 +23,40 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             format="%(asctime)s %(levelname)s %(name)s %(message)s",
         )
         app.state.settings = runtime_settings
-        app.state.risk_model = RiskModel.load(runtime_settings.model_path)
-        app.state.calibrated_model = (
-            CalibratedFraudModel.load(runtime_settings.calibrated_model_path)
-            if runtime_settings.calibrated_model_path.is_file()
-            else None
+        database = Database(
+            runtime_settings.database_url,
+            echo=runtime_settings.database_echo,
         )
-        logging.getLogger(__name__).info(
-            "loaded model version=%s",
-            app.state.risk_model.model_version,
-        )
-        if app.state.calibrated_model is None:
-            logging.getLogger(__name__).warning(
-                "calibrated model unavailable path=%s",
-                runtime_settings.calibrated_model_path,
+        app.state.database = database
+        try:
+            app.state.risk_model = RiskModel.load(runtime_settings.model_path)
+            app.state.calibrated_model = (
+                CalibratedFraudModel.load(runtime_settings.calibrated_model_path)
+                if runtime_settings.calibrated_model_path.is_file()
+                else None
             )
-        else:
             logging.getLogger(__name__).info(
-                "loaded calibrated model version=%s",
-                app.state.calibrated_model.model_version,
+                "loaded model version=%s database=%s",
+                app.state.risk_model.model_version,
+                database.engine.url.render_as_string(hide_password=True),
             )
-        yield
+            if not database.is_ready():
+                logging.getLogger(__name__).warning(
+                    "database schema unavailable; run `make migrate`"
+                )
+            if app.state.calibrated_model is None:
+                logging.getLogger(__name__).warning(
+                    "calibrated model unavailable path=%s",
+                    runtime_settings.calibrated_model_path,
+                )
+            else:
+                logging.getLogger(__name__).info(
+                    "loaded calibrated model version=%s",
+                    app.state.calibrated_model.model_version,
+                )
+            yield
+        finally:
+            database.close()
 
     application = FastAPI(
         title=runtime_settings.app_name,

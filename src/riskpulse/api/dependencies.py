@@ -1,8 +1,12 @@
+from collections.abc import Iterator
+
 from fastapi import HTTPException, Request, status
+from sqlalchemy.orm import Session
 
 from riskpulse.config import Settings
 from riskpulse.ml.calibrated_service import CalibratedFraudModel
 from riskpulse.ml.service import RiskModel
+from riskpulse.persistence.database import Database
 
 
 def get_settings(request: Request) -> Settings:
@@ -23,3 +27,12 @@ def get_calibrated_model(request: Request) -> CalibratedFraudModel:
             ),
         )
     return model
+
+
+def get_database(request: Request) -> Database:
+    return request.app.state.database
+
+
+def get_session(request: Request) -> Iterator[Session]:
+    database = get_database(request)
+    yield from database.sessions()
