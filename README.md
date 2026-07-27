@@ -4,10 +4,10 @@ RiskPulse is a production-minded real-time transaction risk scoring service. It
 combines an interpretable machine-learning baseline with a typed FastAPI
 backend, automated tests, containerization, and CI.
 
-This repository is currently Phase 1 of a larger portfolio project. The model
-uses deterministic synthetic data so anyone can reproduce the complete system
-without downloading private or restricted financial data. Its metrics are
-development metrics, not claims about real-world fraud performance.
+The API currently serves a deterministic synthetic baseline, while the Phase 2
+evaluation pipeline benchmarks models on a documented public fraud dataset.
+Its metrics are development metrics, not claims about real-world fraud
+performance.
 
 ## Current capabilities
 
@@ -18,6 +18,9 @@ development metrics, not claims about real-world fraud performance.
 - Generate interactive OpenAPI documentation
 - Run locally or in Docker
 - Enforce linting, formatting, tests, and coverage in GitHub Actions
+- Load and validate OpenML credit-card fraud dataset 1597
+- Preserve chronology with a 70/15/15 train/validation/test split
+- Tune alert thresholds against explicit fraud-loss and review-cost assumptions
 
 ## Architecture
 
@@ -92,12 +95,20 @@ Actual values vary with the trained artifact.
 
 ```bash
 make install
+make data
+make benchmark
 make train
 make run
 make lint
 make test
 make check
 ```
+
+`make benchmark` fits a dummy reference, class-weighted logistic regression,
+and histogram gradient boosting. Models and thresholds are selected using only
+the validation period. The selected pair is then evaluated once on the
+untouched test period. The report is written to
+`artifacts/real_data_benchmark.json`.
 
 For Docker:
 
@@ -123,9 +134,12 @@ a non-root user.
   time, reducing leakage risk.
 - Accuracy is intentionally not the headline metric. The training pipeline
   records ROC-AUC, PR-AUC, precision, and recall.
-- The baseline uses class weighting so the minority class contributes
-  meaningfully during training. Probability calibration remains a Phase 2
-  deliverable.
+- Candidate models use class weighting so the minority class contributes
+  meaningfully during training. Probability calibration remains a later Phase
+  2 deliverable.
+- Cost-sensitive threshold selection charges a configurable fixed review cost
+  for false alerts and the transaction amount for missed fraud. These are
+  transparent modelling assumptions, not claimed production costs.
 - Model artifacts carry their version, training timestamp, feature schema, and
   validation metrics.
 - The service rejects artifacts whose feature order no longer matches the API.
@@ -136,10 +150,11 @@ a non-root user.
 
 ### Phase 2 — Real data and stronger evaluation
 
-- Integrate a documented public fraud dataset
-- Build time-aware preprocessing and a temporal validation split
-- Compare logistic regression with LightGBM
-- Add probability calibration and cost-sensitive threshold selection
+- [x] Integrate a documented public fraud dataset
+- [x] Build time-aware preprocessing and a temporal validation split
+- [x] Compare interpretable and nonlinear baselines
+- [x] Add cost-sensitive threshold selection
+- [ ] Add probability calibration
 - Produce a model card and reproducible evaluation report
 
 ### Phase 3 — Production data layer
