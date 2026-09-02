@@ -21,14 +21,32 @@ services:
     environment:
       RISKPULSE_MODEL_PATH: /app/artifacts/fraud_model.joblib
       RISKPULSE_CALIBRATED_MODEL_PATH: /app/artifacts/calibrated_creditcard_model.joblib
+      RISKPULSE_MONITORING_REFERENCE_PATH: /app/artifacts/creditcard_reference_profile.json
       RISKPULSE_DATABASE_URL: postgresql+psycopg://riskpulse:${POSTGRES_PASSWORD:-riskpulse-local}@database:5432/riskpulse
       RISKPULSE_LOG_LEVEL: INFO
     volumes:
       - ./artifacts/calibrated_creditcard_model.joblib:/app/artifacts/calibrated_creditcard_model.joblib:ro
+      - ./artifacts/creditcard_reference_profile.json:/app/artifacts/creditcard_reference_profile.json:ro
     depends_on:
       database:
         condition: service_healthy
     restart: unless-stopped
 
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - riskpulse-prometheus:/prometheus
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   riskpulse-postgres:
+  riskpulse-prometheus:

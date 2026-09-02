@@ -165,6 +165,32 @@ class ScoringEventResponse(BaseModel):
     feedback: ReviewFeedbackResponse | None
 
 
+class DriftSeverity(StrEnum):
+    INSUFFICIENT_DATA = "insufficient_data"
+    STABLE = "stable"
+    WARNING = "warning"
+    CRITICAL = "critical"
+
+
+class FeatureDriftResponse(BaseModel):
+    feature: str
+    population_stability_index: float = Field(ge=0)
+    severity: DriftSeverity
+    reference_mean: float
+    current_mean: float
+
+
+class DriftReportResponse(BaseModel):
+    generated_at: datetime
+    model_version: str
+    reference_rows: int = Field(gt=0)
+    current_rows: int = Field(ge=0)
+    minimum_events: int = Field(gt=0)
+    status: DriftSeverity
+    drifted_features: int = Field(ge=0)
+    features: list[FeatureDriftResponse]
+
+
 class HealthResponse(BaseModel):
     status: str
     service: str

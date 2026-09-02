@@ -27,6 +27,9 @@ development metrics, not claims about real-world fraud performance.
 - Protect scoring writes with payload-aware idempotency keys
 - Manage the database schema with Alembic migrations
 - Run PostgreSQL alongside the API with Docker Compose
+- Export bounded-cardinality HTTP and model metrics for Prometheus
+- Detect feature and prediction drift against a versioned training reference
+- Propagate request IDs and emit structured request-completion logs
 
 ## Architecture
 
@@ -41,6 +44,8 @@ flowchart TD
     P --> Q["Manual-review queue"]
     Q --> F["Analyst feedback"]
     F --> P
+    P --> O["Drift report"]
+    A --> X["Prometheus metrics"]
 ```
 
 ## Quick start
@@ -54,6 +59,7 @@ python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"
 python -m riskpulse.ml.train --output artifacts/fraud_model.joblib
 make calibrate
+make monitoring-reference
 make migrate
 python -m uvicorn riskpulse.main:app --app-dir src --reload
 ```
@@ -64,6 +70,8 @@ Open:
 - Readiness check: `http://127.0.0.1:8000/health/ready`
 - Demo model metadata: `http://127.0.0.1:8000/v1/model`
 - Calibrated model metadata: `http://127.0.0.1:8000/v1/credit-card/model`
+- Prometheus metrics: `http://127.0.0.1:8000/metrics`
+- Drift report: `http://127.0.0.1:8000/v1/monitoring/drift`
 
 Score a transaction:
 
@@ -123,6 +131,7 @@ make install
 make data
 make benchmark
 make calibrate
+make monitoring-reference
 make migrate
 make train
 make run
@@ -142,6 +151,14 @@ probability calibration, threshold selection, and final testing. It writes a
 versioned Joblib model, a machine-readable evaluation report, and a
 recruiter-readable model card under `artifacts/`.
 
+`make monitoring-reference` scores the chronological training period with the
+selected calibrated artifact and stores decile distributions for all 30 input
+features plus the model output. The runtime drift endpoint compares recent,
+persisted scoring events with this versioned reference using Population
+Stability Index (PSI). The report stays `insufficient_data` until the configured
+minimum sample size is reached, warns at PSI 0.10, and becomes critical at PSI
+0.25 by default.
+
 For PostgreSQL and the API in Docker:
 
 ```bash
@@ -150,8 +167,10 @@ docker compose up --build
 
 Compose starts PostgreSQL, waits for its health check, applies the Alembic
 migration, mounts the locally generated calibrated Joblib artifact read-only,
-and then starts the API as a non-root user. Run `make calibrate` before the
-first Compose startup so that artifact exists.
+and then starts the API as a non-root user. It also starts Prometheus at
+`http://127.0.0.1:9090` and scrapes the API every 15 seconds. Run
+`make calibrate` and `make monitoring-reference` before the first Compose
+startup so that both read-only artifacts exist.
 
 ## API surface
 
@@ -166,6 +185,8 @@ first Compose startup so that artifact exists.
 | `GET` | `/v1/credit-card/transactions/{id}` | Retrieve an immutable scoring audit event |
 | `GET` | `/v1/credit-card/reviews` | List unresolved manual-review events |
 | `POST` | `/v1/credit-card/transactions/{id}/feedback` | Record an analyst outcome |
+| `GET` | `/v1/monitoring/drift` | Compare recent traffic with the training reference |
+| `GET` | `/metrics` | Export Prometheus latency, traffic, scoring, and feedback metrics |
 
 ## Important modelling choices
 
@@ -188,6 +209,11 @@ first Compose startup so that artifact exists.
 - The feedback endpoint intentionally has no authentication in this portfolio
   build; authentication and role-based authorization are required before use
   with real analysts.
+- PSI is an unsupervised shift signal, not proof of degraded fraud performance.
+  Investigation and labelled feedback are required before retraining or
+  promoting another model.
+- Prometheus labels use route templates and controlled model fields to avoid
+  transaction-level cardinality.
 - Reason codes describe triggered business signals. They are not presented as
   causal explanations.
 
@@ -217,13 +243,13 @@ first Compose startup so that artifact exists.
 - [x] Add an auditable manual-review queue
 - Add Redis-backed online features
 - Add batch scoring
-- Introduce structured logging and request tracing
+- [x] Introduce structured request logs and request-ID tracing
 
 ### Phase 5 — MLOps and monitoring
 
 - Track experiments and artifacts with MLflow
-- Export Prometheus latency and throughput metrics
-- Detect feature and prediction drift with Evidently
+- [x] Export Prometheus latency, throughput, and model-output metrics
+- [x] Detect feature and prediction drift against a versioned reference
 - Add champion/challenger promotion and rollback
 
 ### Phase 6 — Product experience

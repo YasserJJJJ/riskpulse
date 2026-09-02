@@ -12,6 +12,7 @@ from riskpulse.config import Settings
 from riskpulse.main import create_app
 from riskpulse.ml.datasets import FEATURE_COLUMNS
 from riskpulse.ml.training import train_and_save_model
+from riskpulse.monitoring.drift import PREDICTION_FEATURE, build_drift_reference
 from riskpulse.persistence.database import Database
 
 
@@ -51,16 +52,39 @@ def calibrated_model_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return path
 
 
+@pytest.fixture(scope="session")
+def monitoring_reference_path(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Path:
+    path = tmp_path_factory.mktemp("monitoring") / "creditcard-reference.json"
+    rows = 200
+    reference_frame = pd.DataFrame(
+        {name: [float(index) for index in range(rows)] for name in FEATURE_COLUMNS}
+    )
+    reference_frame[PREDICTION_FEATURE] = 0.5
+    reference = build_drift_reference(
+        reference_frame,
+        model_version="creditcard-test-model",
+        dataset_id=1597,
+        generated_at=datetime(2026, 7, 27, tzinfo=UTC),
+    )
+    reference.save(path)
+    return path
+
+
 @pytest.fixture
 def settings(
     model_path: Path,
     calibrated_model_path: Path,
+    monitoring_reference_path: Path,
     tmp_path: Path,
 ) -> Settings:
     return Settings(
         model_path=model_path,
         calibrated_model_path=calibrated_model_path,
+        monitoring_reference_path=monitoring_reference_path,
         database_url=f"sqlite:///{tmp_path / 'riskpulse.db'}",
+        drift_minimum_events=20,
         review_threshold=0.35,
         decline_threshold=0.80,
     )

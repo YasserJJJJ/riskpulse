@@ -134,6 +134,20 @@ class AuditRepository:
         )
         return list(self.session.scalars(statement))
 
+    def recent_events(
+        self,
+        *,
+        model_version: str,
+        limit: int,
+    ) -> list[ScoringEvent]:
+        statement: Select[tuple[ScoringEvent]] = (
+            select(ScoringEvent)
+            .where(ScoringEvent.model_version == model_version)
+            .order_by(ScoringEvent.scored_at.desc())
+            .limit(limit)
+        )
+        return list(self.session.scalars(statement))
+
     def record_feedback(
         self,
         transaction_id: UUID,

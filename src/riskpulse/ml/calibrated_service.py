@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 
 import joblib
+import numpy as np
 import pandas as pd
 
 from riskpulse.domain.schemas import (
@@ -97,8 +98,18 @@ class CalibratedFraudModel:
             transaction.amount,
         ]
         features = pd.DataFrame([values], columns=list(FEATURE_COLUMNS))
-        probability = float(self._model.predict_proba(features)[0, 1])
+        probability = float(self.score_features(features)[0])
         return min(max(probability, 0.0), 1.0)
+
+    def score_features(self, features: pd.DataFrame) -> np.ndarray:
+        if list(features.columns) != list(FEATURE_COLUMNS):
+            raise ValueError("feature frame does not match the calibrated model schema")
+        probabilities = np.asarray(self._model.predict_proba(features)[:, 1], dtype=float)
+        if probabilities.ndim != 1 or len(probabilities) != len(features):
+            raise RuntimeError("calibrated model returned an invalid probability shape")
+        if not np.isfinite(probabilities).all():
+            raise RuntimeError("calibrated model returned non-finite probabilities")
+        return np.clip(probabilities, 0.0, 1.0)
 
     def metadata(self) -> CalibratedModelMetadataResponse:
         return CalibratedModelMetadataResponse(
