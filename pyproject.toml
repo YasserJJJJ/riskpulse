@@ -17,6 +17,7 @@ dependencies = [
     "numpy>=2.0,<3.0",
     "pandas>=2.3,<4.0",
     "pyarrow>=18.0,<24.0",
+    "prometheus-client>=0.22,<1.0",
     "pydantic-settings>=2.10,<3.0",
     "psycopg[binary]>=3.2,<4.0",
     "scikit-learn>=1.7,<2.0",
@@ -48,6 +49,7 @@ testpaths = ["tests"]
 
 [tool.coverage.run]
 omit = [
+    "src/riskpulse/ml/build_reference_profile.py",
     "src/riskpulse/ml/benchmark.py",
     "src/riskpulse/ml/calibrate.py",
     "src/riskpulse/ml/inspect_data.py",

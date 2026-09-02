@@ -5,7 +5,11 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from riskpulse.api.dependencies import get_calibrated_model, get_session
+from riskpulse.api.dependencies import (
+    get_calibrated_model,
+    get_monitoring_metrics,
+    get_session,
+)
 from riskpulse.domain.schemas import (
     CalibratedModelMetadataResponse,
     CalibratedScoreResponse,
@@ -16,6 +20,7 @@ from riskpulse.domain.schemas import (
     ScoringEventResponse,
 )
 from riskpulse.ml.calibrated_service import CalibratedFraudModel
+from riskpulse.monitoring.metrics import MonitoringMetrics
 from riskpulse.persistence.models import ScoringEvent
 from riskpulse.persistence.repository import (
     AuditConflictError,
@@ -84,6 +89,7 @@ def score_credit_card_transaction(
     transaction: CreditCardTransactionRequest,
     model: Annotated[CalibratedFraudModel, Depends(get_calibrated_model)],
     session: Annotated[Session, Depends(get_session)],
+    metrics: Annotated[MonitoringMetrics, Depends(get_monitoring_metrics)],
     idempotency_key: Annotated[
         str | None,
         Header(alias="Idempotency-Key", min_length=1, max_length=128),
@@ -110,6 +116,12 @@ def score_credit_card_transaction(
             detail=str(error),
         ) from error
     if replay is not None:
+        metrics.observe_score(
+            model_version=replay.model_version,
+            route=replay.route,
+            replayed=True,
+            fraud_probability=replay.fraud_probability,
+        )
         return _score_response(replay, replayed=True)
 
     fraud_probability = model.score(transaction)
@@ -135,6 +147,12 @@ def score_credit_card_transaction(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(error),
         ) from error
+    metrics.observe_score(
+        model_version=event.model_version,
+        route=event.route,
+        replayed=replayed,
+        fraud_probability=event.fraud_probability,
+    )
     return _score_response(event, replayed=replayed)
 
 
@@ -180,6 +198,7 @@ def record_review_feedback(
     transaction_id: UUID,
     feedback: ReviewFeedbackRequest,
     session: Annotated[Session, Depends(get_session)],
+    metrics: Annotated[MonitoringMetrics, Depends(get_monitoring_metrics)],
 ) -> ScoringEventResponse:
     try:
         event = AuditRepository(session).record_feedback(transaction_id, feedback)
@@ -193,4 +212,5 @@ def record_review_feedback(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(error),
         ) from error
+    metrics.observe_feedback(outcome=event.review_outcome or feedback.outcome.value)
     return _audit_response(event)
