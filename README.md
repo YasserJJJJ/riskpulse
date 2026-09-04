@@ -59,7 +59,8 @@ and interactive review outcomes.
 The hosted build currently uses an explicitly labelled demo stream so the
 interface can be evaluated without a running API. The next integration step is
 to connect the same screens to the RiskPulse scoring, review, metrics, and drift
-endpoints.
+endpoints. The dashboard includes a verified Cloudflare Worker deployment path
+for free hosting on a `*.workers.dev` address.
 
 Run it locally:
 

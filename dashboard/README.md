@@ -19,7 +19,28 @@ npm run dev
 npm run build
 node --test tests/*.test.mjs
 npm run lint
+npm run deploy:cloudflare -- --dry-run
 ```
+
+## Deploy free on Cloudflare
+
+The dashboard builds to a Cloudflare Worker and can use the free
+`*.workers.dev` address assigned to your Cloudflare account.
+
+For a manual deployment after signing in with Wrangler:
+
+```bash
+npm run deploy
+```
+
+For Cloudflare's GitHub integration, import this repository and configure:
+
+- Root directory: `dashboard`
+- Build command: `npm run build`
+- Deploy command: `npm run deploy:cloudflare`
+- Worker name: `riskpulse-operations`
+
+Cloudflare then deploys updates from the production branch automatically.
 
 ## Production integration
 
