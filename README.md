@@ -8,6 +8,8 @@ The API keeps the original deterministic demo endpoint and can also serve the
 calibrated model trained on a documented public fraud dataset. Its metrics are
 development metrics, not claims about real-world fraud performance.
 
+**Live operations dashboard:** [riskpulse-operations.yasserjabari2005.workers.dev](https://riskpulse-operations.yasserjabari2005.workers.dev)
+
 ## Current capabilities
 
 - Train and serialize a reproducible logistic-regression baseline
@@ -279,7 +281,8 @@ startup so that both read-only artifacts exist.
 - [x] Build a responsive operations dashboard
 - Replay transactions as an event stream
 - [x] Add a demo human-review queue and feedback workflow
-- Deploy a public demo and publish measured load-test results
+- [x] Deploy a public demo
+- Publish measured load-test results
 
 ## Project structure
 
