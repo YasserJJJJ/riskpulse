@@ -10,6 +10,21 @@ development metrics, not claims about real-world fraud performance.
 
 **Live operations dashboard:** [riskpulse-operations.yasserjabari2005.workers.dev](https://riskpulse-operations.yasserjabari2005.workers.dev)
 
+[![RiskPulse operations dashboard showing scoring KPIs, model drift, and manual-review activity](docs/images/riskpulse-overview.webp)](https://riskpulse-operations.yasserjabari2005.workers.dev)
+
+<details>
+<summary><strong>Explore the analyst workflow</strong></summary>
+
+### Prioritized manual-review queue
+
+![RiskPulse prioritized manual-review queue](docs/images/riskpulse-review-queue.webp)
+
+### Transaction investigation and decisioning
+
+![RiskPulse transaction investigation panel with fraud probability and analyst outcomes](docs/images/riskpulse-transaction-review.webp)
+
+</details>
+
 ## Current capabilities
 
 - Train and serialize a reproducible logistic-regression baseline
