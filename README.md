@@ -30,6 +30,7 @@ development metrics, not claims about real-world fraud performance.
 - Export bounded-cardinality HTTP and model metrics for Prometheus
 - Detect feature and prediction drift against a versioned training reference
 - Propagate request IDs and emit structured request-completion logs
+- Explore scoring activity, model drift, and analyst reviews in an interactive dashboard
 
 ## Architecture
 
@@ -46,6 +47,27 @@ flowchart TD
     F --> P
     P --> O["Drift report"]
     A --> X["Prometheus metrics"]
+```
+
+## Operations dashboard
+
+The [`dashboard/`](dashboard/) workspace provides the analyst-facing RiskPulse
+interface. It includes scoring and alert KPIs, a transaction-volume chart,
+PSI drift monitoring, a searchable manual-review queue, transaction details,
+and interactive review outcomes.
+
+The hosted build currently uses an explicitly labelled demo stream so the
+interface can be evaluated without a running API. The next integration step is
+to connect the same screens to the RiskPulse scoring, review, metrics, and drift
+endpoints. The dashboard includes a verified Cloudflare Worker deployment path
+for free hosting on a `*.workers.dev` address.
+
+Run it locally:
+
+```bash
+cd dashboard
+npm run install:ci
+npm run dev
 ```
 
 ## Quick start
@@ -254,14 +276,15 @@ startup so that both read-only artifacts exist.
 
 ### Phase 6 — Product experience
 
-- Build a Next.js operations dashboard
+- [x] Build a responsive operations dashboard
 - Replay transactions as an event stream
-- Add a human-review queue and feedback workflow
+- [x] Add a demo human-review queue and feedback workflow
 - Deploy a public demo and publish measured load-test results
 
 ## Project structure
 
 ```text
+dashboard/             # Analyst operations dashboard
 src/riskpulse/
 ├── api/          # FastAPI routes and dependencies
 ├── domain/       # Request, response, and decision models
