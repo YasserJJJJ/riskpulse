@@ -4,7 +4,7 @@ An interactive fraud-operations dashboard for RiskPulse. It gives analysts a foc
 
 The current release uses an explicitly labeled demo stream so the interface can be evaluated independently of a running RiskPulse API. Analyst actions update the local review queue and transaction detail view.
 
-[Open the live dashboard](https://riskpulse-operations.yasserj.chatgpt.site)
+[Open the live dashboard](https://riskpulse-operations.yasserjabari2005.workers.dev)
 
 ## Run locally
 
@@ -35,9 +35,9 @@ npm run deploy
 
 For Cloudflare's GitHub integration, import this repository and configure:
 
-- Root directory: `dashboard`
-- Build command: `npm run build`
-- Deploy command: `npm run deploy:cloudflare`
+- Root directory: `/`
+- Build command: `npm --prefix dashboard ci && npm --prefix dashboard run build`
+- Deploy command: `npm --prefix dashboard run deploy:cloudflare`
 - Worker name: `riskpulse-operations`
 
 Cloudflare then deploys updates from the production branch automatically.
