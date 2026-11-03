@@ -1,13 +1,9 @@
 import shutil
-import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
-from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
 import pandas as pd
-from sklearn.datasets import fetch_openml
 
 OPENML_CREDIT_CARD_DATA_ID = 1597
 OPENML_PARQUET_URL = "https://data.openml.org/datasets/0000/1597/dataset_1597.pq"
@@ -66,41 +62,19 @@ def _download_parquet(cache_path: Path) -> None:
         raise
 
 
-def _load_fallback_frame(data_home: Path) -> pd.DataFrame:
+def _load_source_frame(data_home: Path) -> pd.DataFrame:
+    # The Parquet export keeps every column. scikit-learn's fetch_openml drops `Time`,
+    # because OpenML marks it as the row identifier, and the temporal split needs it.
     cache_path = data_home / PARQUET_CACHE_FILENAME
     if not cache_path.exists():
         _download_parquet(cache_path)
     return pd.read_parquet(cache_path)
 
 
-def _load_source_frame(data_home: Path) -> pd.DataFrame:
-    if (data_home / PARQUET_CACHE_FILENAME).exists():
-        return _load_fallback_frame(data_home)
-
-    try:
-        downloaded: Any = fetch_openml(
-            data_id=OPENML_CREDIT_CARD_DATA_ID,
-            data_home=str(data_home),
-            as_frame=True,
-            parser="pandas",
-        )
-    except (HTTPError, URLError, TimeoutError):
-        warnings.warn(
-            "OpenML API unavailable; using the pinned Parquet download instead",
-            RuntimeWarning,
-            stacklevel=2,
-        )
-        return _load_fallback_frame(data_home)
-
-    if not isinstance(downloaded.frame, pd.DataFrame):
-        raise DatasetSchemaError("OpenML response did not include a pandas DataFrame")
-    return downloaded.frame
-
-
 def load_credit_card_fraud(
     data_home: Path = Path("data/openml"),
 ) -> CreditCardFraudDataset:
-    """Download, validate, and chronologically order OpenML dataset 1597."""
+    """Download, validate, and chronologically order OpenML dataset 1597 from its Parquet export."""
 
     data_home.mkdir(parents=True, exist_ok=True)
     source_frame = _load_source_frame(data_home)

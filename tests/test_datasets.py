@@ -1,6 +1,4 @@
 from pathlib import Path
-from types import SimpleNamespace
-from urllib.error import HTTPError
 
 import pandas as pd
 import pytest
@@ -28,19 +26,24 @@ def sample_frame(rows: int = 20) -> pd.DataFrame:
     return pd.DataFrame(data)
 
 
-def test_loads_validates_and_orders_openml_data(
+def use_cached_frame(monkeypatch: pytest.MonkeyPatch, data_home: Path, frame: pd.DataFrame) -> Path:
+    data_home.mkdir(parents=True, exist_ok=True)
+    cache_path = data_home / PARQUET_CACHE_FILENAME
+    cache_path.write_bytes(b"cached parquet placeholder")
+
+    def fake_read_parquet(path: Path) -> pd.DataFrame:
+        assert path == cache_path
+        return frame
+
+    monkeypatch.setattr("riskpulse.ml.datasets.pd.read_parquet", fake_read_parquet)
+    return cache_path
+
+
+def test_loads_validates_and_orders_parquet_data(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    frame = sample_frame()
-
-    def fake_fetch_openml(**kwargs: object) -> SimpleNamespace:
-        assert kwargs["data_id"] == 1597
-        assert kwargs["as_frame"] is True
-        assert kwargs["parser"] == "pandas"
-        return SimpleNamespace(frame=frame)
-
-    monkeypatch.setattr("riskpulse.ml.datasets.fetch_openml", fake_fetch_openml)
+    use_cached_frame(monkeypatch, tmp_path / "openml", sample_frame())
 
     dataset = load_credit_card_fraud(tmp_path / "openml")
 
@@ -53,23 +56,16 @@ def test_loads_validates_and_orders_openml_data(
     assert dataset.summary.feature_count == 30
 
 
-def test_uses_cached_parquet_without_calling_openml_api(
+def test_uses_cached_parquet_without_downloading(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    frame = sample_frame()
-    cache_path = tmp_path / PARQUET_CACHE_FILENAME
-    cache_path.write_bytes(b"cached parquet placeholder")
+    use_cached_frame(monkeypatch, tmp_path, sample_frame())
 
-    def unexpected_openml_call(**_: object) -> None:
-        raise AssertionError("cached data should avoid an OpenML API request")
+    def unexpected_download(*_: object, **__: object) -> None:
+        raise AssertionError("cached data should avoid a download")
 
-    def fake_read_parquet(path: Path) -> pd.DataFrame:
-        assert path == cache_path
-        return frame
-
-    monkeypatch.setattr("riskpulse.ml.datasets.fetch_openml", unexpected_openml_call)
-    monkeypatch.setattr("riskpulse.ml.datasets.pd.read_parquet", fake_read_parquet)
+    monkeypatch.setattr("riskpulse.ml.datasets.urlopen", unexpected_download)
 
     dataset = load_credit_card_fraud(tmp_path)
 
@@ -100,19 +96,28 @@ def test_downloads_parquet_atomically(
             self.consumed = True
             return b"parquet bytes"
 
-    monkeypatch.setattr(
-        "riskpulse.ml.datasets.fetch_openml",
-        lambda **_: (_ for _ in ()).throw(
-            HTTPError("https://www.openml.org", 504, "Gateway Time-out", {}, None)
-        ),
-    )
     monkeypatch.setattr("riskpulse.ml.datasets.urlopen", lambda *_args, **_kwargs: FakeResponse())
     monkeypatch.setattr("riskpulse.ml.datasets.pd.read_parquet", lambda _path: frame)
 
-    with pytest.warns(RuntimeWarning):
-        load_credit_card_fraud(tmp_path)
+    load_credit_card_fraud(tmp_path)
 
     assert (tmp_path / PARQUET_CACHE_FILENAME).read_bytes() == b"parquet bytes"
+    assert not (tmp_path / f"{PARQUET_CACHE_FILENAME}.part").exists()
+
+
+def test_failed_download_leaves_no_partial_file(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    def failing_download(*_: object, **__: object) -> None:
+        raise OSError("connection reset")
+
+    monkeypatch.setattr("riskpulse.ml.datasets.urlopen", failing_download)
+
+    with pytest.raises(OSError, match="connection reset"):
+        load_credit_card_fraud(tmp_path)
+
+    assert not (tmp_path / PARQUET_CACHE_FILENAME).exists()
     assert not (tmp_path / f"{PARQUET_CACHE_FILENAME}.part").exists()
 
 
@@ -120,13 +125,9 @@ def test_rejects_missing_dataset_columns(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    frame = sample_frame().drop(columns=["Amount"])
-    monkeypatch.setattr(
-        "riskpulse.ml.datasets.fetch_openml",
-        lambda **_: SimpleNamespace(frame=frame),
-    )
+    use_cached_frame(monkeypatch, tmp_path, sample_frame().drop(columns=["Time"]))
 
-    with pytest.raises(DatasetSchemaError, match="Amount"):
+    with pytest.raises(DatasetSchemaError, match="Time"):
         load_credit_card_fraud(tmp_path)
 
 
@@ -136,10 +137,7 @@ def test_rejects_invalid_target_labels(
 ) -> None:
     frame = sample_frame()
     frame["Class"] = 2
-    monkeypatch.setattr(
-        "riskpulse.ml.datasets.fetch_openml",
-        lambda **_: SimpleNamespace(frame=frame),
-    )
+    use_cached_frame(monkeypatch, tmp_path, frame)
 
     with pytest.raises(DatasetSchemaError, match="binary labels"):
         load_credit_card_fraud(tmp_path)
