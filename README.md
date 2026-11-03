@@ -8,22 +8,20 @@ The API keeps the original deterministic demo endpoint and can also serve the
 calibrated model trained on a documented public fraud dataset. Its metrics are
 development metrics, not claims about real-world fraud performance.
 
-**Live operations dashboard:** [riskpulse-operations.yasserjabari2005.workers.dev](https://riskpulse-operations.yasserjabari2005.workers.dev)
+## Results
 
-[![RiskPulse operations dashboard showing scoring KPIs, model drift, and manual-review activity](docs/images/riskpulse-overview.webp)](https://riskpulse-operations.yasserjabari2005.workers.dev)
+The calibrated model was evaluated once on the last chronological 15% of OpenML dataset 1597 (284,807 card transactions, 0.17% fraud), after model selection, calibration and threshold choice on earlier periods.
 
-<details>
-<summary><strong>Explore the analyst workflow</strong></summary>
+| Test-period metric | Value |
+| --- | --- |
+| ROC-AUC | 0.963 |
+| PR-AUC | 0.743 |
+| Precision at the chosen threshold | 0.826 |
+| Recall at the chosen threshold | 0.731 |
+| Transactions sent to manual review | 0.11% |
+| Fraud amount captured | 60.9% |
 
-### Prioritized manual-review queue
-
-![RiskPulse prioritized manual-review queue](docs/images/riskpulse-review-queue.webp)
-
-### Transaction investigation and decisioning
-
-![RiskPulse transaction investigation panel with fraud probability and analyst outcomes](docs/images/riskpulse-transaction-review.webp)
-
-</details>
+These are development metrics on a public, anonymized dataset, not claims about production fraud performance. The full report is in [`artifacts/calibrated_model_report.json`](artifacts/calibrated_model_report.json) and the [model card](artifacts/MODEL_CARD.md) explains the method and its limits.
 
 ## Current capabilities
 
@@ -47,13 +45,12 @@ development metrics, not claims about real-world fraud performance.
 - Export bounded-cardinality HTTP and model metrics for Prometheus
 - Detect feature and prediction drift against a versioned training reference
 - Propagate request IDs and emit structured request-completion logs
-- Explore scoring activity, model drift, and analyst reviews in an interactive dashboard
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    C["Client or dashboard"] --> A["FastAPI scoring API"]
+    C["Client"] --> A["FastAPI scoring API"]
     A --> V["Pydantic validation"]
     V --> M["Versioned risk model"]
     M --> D["Decision and audit event"]
@@ -64,27 +61,6 @@ flowchart TD
     F --> P
     P --> O["Drift report"]
     A --> X["Prometheus metrics"]
-```
-
-## Operations dashboard
-
-The [`dashboard/`](dashboard/) workspace provides the analyst-facing RiskPulse
-interface. It includes scoring and alert KPIs, a transaction-volume chart,
-PSI drift monitoring, a searchable manual-review queue, transaction details,
-and interactive review outcomes.
-
-The hosted build currently uses an explicitly labelled demo stream so the
-interface can be evaluated without a running API. The next integration step is
-to connect the same screens to the RiskPulse scoring, review, metrics, and drift
-endpoints. The dashboard includes a verified Cloudflare Worker deployment path
-for free hosting on a `*.workers.dev` address.
-
-Run it locally:
-
-```bash
-cd dashboard
-npm run install:ci
-npm run dev
 ```
 
 ## Quick start
@@ -188,7 +164,7 @@ untouched test period. The report is written to
 `make calibrate` keeps four chronological periods separate: model fitting,
 probability calibration, threshold selection, and final testing. It writes a
 versioned Joblib model, a machine-readable evaluation report, and a
-recruiter-readable model card under `artifacts/`.
+human-readable model card under `artifacts/`.
 
 `make monitoring-reference` scores the chronological training period with the
 selected calibrated artifact and stores decile distributions for all 30 input
@@ -256,53 +232,19 @@ startup so that both read-only artifacts exist.
 - Reason codes describe triggered business signals. They are not presented as
   causal explanations.
 
-## Roadmap
+## Possible extensions
 
-### Phase 2 — Real data and stronger evaluation
+The project is complete as a scoring service. These would be the next steps toward a real deployment:
 
-- [x] Integrate a documented public fraud dataset
-- [x] Build time-aware preprocessing and a temporal validation split
-- [x] Compare interpretable and nonlinear baselines
-- [x] Add cost-sensitive threshold selection
-- [x] Add probability calibration and a model card
-- [x] Produce a model card and reproducible evaluation report
-
-### Phase 3 — Real-model serving
-
-- [x] Load and validate the versioned calibrated artifact
-- [x] Expose typed scoring and metadata endpoints
-- [x] Route model alerts to manual review
-- [x] Keep the demo service healthy when the optional artifact is absent
-
-### Phase 4 — Production data layer
-
-- [x] Persist scoring events and review feedback in PostgreSQL
-- [x] Add Alembic schema migrations
-- [x] Add payload-aware idempotency keys
-- [x] Add an auditable manual-review queue
-- Add Redis-backed online features
-- Add batch scoring
-- [x] Introduce structured request logs and request-ID tracing
-
-### Phase 5 — MLOps and monitoring
-
-- Track experiments and artifacts with MLflow
-- [x] Export Prometheus latency, throughput, and model-output metrics
-- [x] Detect feature and prediction drift against a versioned reference
-- Add champion/challenger promotion and rollback
-
-### Phase 6 — Product experience
-
-- [x] Build a responsive operations dashboard
-- Replay transactions as an event stream
-- [x] Add a demo human-review queue and feedback workflow
-- [x] Deploy a public demo
-- Publish measured load-test results
+- Redis-backed online features and batch scoring
+- Experiment and artifact tracking with MLflow
+- Champion/challenger promotion and rollback
+- Authentication and role-based access for the review endpoints
+- Replaying transactions as an event stream, and published load-test results
 
 ## Project structure
 
 ```text
-dashboard/             # Analyst operations dashboard
 src/riskpulse/
 ├── api/          # FastAPI routes and dependencies
 ├── domain/       # Request, response, and decision models
